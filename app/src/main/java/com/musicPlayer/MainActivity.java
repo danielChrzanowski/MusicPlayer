@@ -1,12 +1,12 @@
-package pl.musicplayer;
+package com.musicPlayer;
 
 import android.Manifest;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
         items = new String[mySongs.size()];
         for (int i = 0; i < mySongs.size(); i++) {
-            items[i] = mySongs.get(i).getName().toString()
+            items[i] = mySongs.get(i).getName()
                     .replace(".mp3", "")
                     .replace(".wav", "");
         }
@@ -84,16 +84,13 @@ public class MainActivity extends AppCompatActivity {
         CustomAdapter customAdapter = new CustomAdapter();
         listView.setAdapter(customAdapter);
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String songName = (String) listView.getItemAtPosition(i);
+        listView.setOnItemClickListener((adapterView, view, i, l) -> {
+            String songName = (String) listView.getItemAtPosition(i);
 
-                startActivity(new Intent(getApplicationContext(), PlayerActivity.class)
-                        .putExtra("songs", mySongs)
-                        .putExtra("songname", songName)
-                        .putExtra("pos", i));
-            }
+            startActivity(new Intent(getApplicationContext(), PlayerActivity.class)
+                    .putExtra("songs", mySongs)
+                    .putExtra("songname", songName)
+                    .putExtra("pos", i));
         });
     }
 

@@ -21,7 +21,7 @@
             android:layout_marginStart="5dp"
             android:layout_marginTop="5dp"
             android:background="@drawable/list_bg"
-            android:src="@drawable/ic_music"></ImageView>
+            android:src="@drawable/ic_music" />
 
         <TextView
             android:id="@+id/txtsongname"
@@ -36,9 +36,9 @@
             android:padding="6dp"
             android:scrollHorizontally="true"
             android:singleLine="true"
-            android:text="Song Name"
+            android:text="@string/song_name"
             android:textColor="#fff"
-            android:textSize="15sp"></TextView>
+            android:textSize="15sp" />
 
     </RelativeLayout>
 

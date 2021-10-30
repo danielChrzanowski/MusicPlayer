@@ -1,4 +1,4 @@
-package pl.musicplayer;
+package com.musicPlayer;
 
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
@@ -16,6 +16,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
@@ -39,7 +40,7 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
     SeekBar seekmusic;
     BarVisualizer visualizer;
     ImageView imageView;
-    boolean btnholdPressed;
+    boolean btnholdPressed, songPresent;
 
     SensorManager sensorManager;
     private float gravity[];
@@ -110,6 +111,7 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
         imageView = findViewById(R.id.imageview);
 
         btnholdPressed = false;
+        songPresent=false;
         btnhold.setOnTouchListener(this);
         audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
 
@@ -176,16 +178,18 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
 
     private void updateSong() {
         updateseekbar = new Thread(() -> {
-            int totalDuration = mediaPlayer.getDuration();
-            int currentPosition = 0;
+            if (songPresent) {
+                int totalDuration = mediaPlayer.getDuration();
+                int currentPosition = 0;
 
-            while (currentPosition < totalDuration) {
-                try {
-                    Thread.sleep(500);
-                    currentPosition = mediaPlayer.getCurrentPosition();
-                    seekmusic.setProgress(currentPosition);
-                } catch (InterruptedException | IllegalStateException e) {
-                    //  e.printStackTrace();
+                while (currentPosition < totalDuration) {
+                    try {
+                        Thread.sleep(500);
+                        currentPosition = mediaPlayer.getCurrentPosition();
+                        seekmusic.setProgress(currentPosition);
+                    } catch (InterruptedException | IllegalStateException e) {
+                        //  e.printStackTrace();
+                    }
                 }
             }
         });
@@ -242,7 +246,9 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
             case Sensor.TYPE_ACCELEROMETER:
                 accels = sensorEvent.values.clone();
 
+                songPresent=false;
                 onShakeAction(sensorEvent);
+                songPresent=true;
                 break;
         }
 
@@ -360,11 +366,14 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
         float x = sensorEvent.values[0];
         float y = sensorEvent.values[1];
         float z = sensorEvent.values[2];
+
         mAccelLast = mAccelCurrent;
         mAccelCurrent = (float) Math.sqrt((double) (x * x + y * y + z * z));
+
         float delta = mAccelCurrent - mAccelLast;
         mAccel = mAccel * 0.9f + delta;
-        if (mAccel > 12) {
+
+        if (mAccel > 40) {
             playNext();
         }
     }

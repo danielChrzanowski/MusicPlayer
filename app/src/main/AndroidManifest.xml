@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="pl.musicplayer">
+    package="com.musicPlayer">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND" />
 
     <application
         android:allowBackup="true"
@@ -12,8 +13,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MusicPlayer">
-        <activity android:name=".PlayerActivity"></activity>
-        <activity android:name=".MainActivity">
+        <activity android:name="com.musicPlayer.PlayerActivity"></activity>
+        <activity android:name="com.musicPlayer.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
