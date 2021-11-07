@@ -16,6 +16,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -27,43 +28,113 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.gauravk.audiovisualizer.visualizer.BarVisualizer;
+import com.squareup.seismic.ShakeDetector;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class PlayerActivity extends AppCompatActivity implements SensorEventListener, View.OnTouchListener {
-    private static final String TAG = "PlayerActivity";
-    ImageButton btnplay, btnnext, btnprev, btnff, btnfr, btnhold;
-    TextView txtsname, txtsstart, txtsstop;
-    SeekBar seekmusic;
+public class PlayerActivity extends AppCompatActivity implements SensorEventListener, View.OnTouchListener, ShakeDetector.Listener {
+    ImageButton btnPlay, btnNext, btnPrev, btnFF, btnFR, btnHold;
+    TextView txtSongName, txtSongStart, txtSongStop;
+    SeekBar seekBar;
     BarVisualizer visualizer;
     ImageView imageView;
-    boolean btnholdPressed, songPresent;
+    boolean btnHoldPressed;
 
     SensorManager sensorManager;
-    private float gravity[];
-    private float magnetic[];
-    private float accels[];
-    private float mags[];
+    private float[] accels;
+    private float[] mags;
     private float[] values;
-
-    private float azimuth;
-    private float pitch;
     private float roll;
 
-    private float mAccel;
-    private float mAccelCurrent;
-    private float mAccelLast;
-
     private AudioManager audioManager;
-    String sname;
     static MediaPlayer mediaPlayer;
+    String songName;
     int position;
+
+    ShakeDetector shakeDetector;
     ArrayList<File> mySongs;
-    Thread updateseekbar;
-    int audiosessionId;
+    ExecutorService executor;
+    int audioSessionId;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_player);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+
+        Objects.requireNonNull(getSupportActionBar()).setTitle("Music list");
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        getSupportActionBar().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#FF6200EE")));
+
+        btnPrev = findViewById(R.id.btnPrev);
+        btnNext = findViewById(R.id.btnNext);
+        btnPlay = findViewById(R.id.btnPlay);
+        btnFF = findViewById(R.id.btnFF);
+        btnFR = findViewById(R.id.btnFR);
+        btnHold = findViewById(R.id.btnHold);
+        txtSongName = findViewById(R.id.txtSongName);
+        txtSongStart = findViewById(R.id.txtSongStart);
+        txtSongStop = findViewById(R.id.txtSongStop);
+        seekBar = findViewById(R.id.seekBar);
+        visualizer = findViewById(R.id.blast);
+        imageView = findViewById(R.id.imageView);
+
+        btnHoldPressed = false;
+        btnHold.setOnTouchListener(this);
+        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+
+        accels = new float[3];
+        mags = new float[3];
+        values = new float[3];
+        roll = 0;
+
+        shakeDetector = new ShakeDetector(this);
+        shakeDetector.start(sensorManager);
+
+        executor = Executors.newFixedThreadPool(1);
+
+        prepareSongs();
+
+        btnPlay.setOnClickListener(view -> {
+            if (mediaPlayer.isPlaying()) {
+                btnPlay.setBackgroundResource(R.drawable.ic_play);
+                mediaPlayer.pause();
+            } else {
+                btnPlay.setBackgroundResource(R.drawable.ic_pause);
+                mediaPlayer.start();
+            }
+        });
+
+        btnNext.setOnClickListener(view -> playSong("next"));
+        btnPrev.setOnClickListener(view -> playSong("prev"));
+
+        btnFF.setOnClickListener(view -> {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 10000);
+            }
+        });
+
+        btnFR.setOnClickListener(view -> {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 10000);
+            }
+        });
+
+        audioSessionId = mediaPlayer.getAudioSessionId();
+
+        if (audioSessionId != -1) {
+            visualizer.setAudioSessionId(audioSessionId);
+        }
+    }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
@@ -75,84 +146,28 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
     }
 
     @Override
+    protected void onResume() {
+        shakeDetector.start(sensorManager);
+
+        super.onResume();
+    }
+
+    @Override
+    protected void onStop() {
+        shakeDetector.stop();
+
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         if (visualizer != null) {
             visualizer.release();
         }
 
+        shakeDetector.stop();
+
         super.onDestroy();
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_player);
-
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
-
-        getSupportActionBar().setTitle("Music list");
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
-        getSupportActionBar().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#FF6200EE")));
-
-        btnprev = findViewById(R.id.btnprev);
-        btnnext = findViewById(R.id.btnnext);
-        btnplay = findViewById(R.id.playbtn);
-        btnff = findViewById(R.id.btnff);
-        btnfr = findViewById(R.id.btnfr);
-        btnhold = findViewById(R.id.btnhold);
-        txtsname = findViewById(R.id.txtsn);
-        txtsstart = findViewById(R.id.txtsstart);
-        txtsstop = findViewById(R.id.txtsstop);
-        seekmusic = findViewById(R.id.seekbar);
-        visualizer = findViewById(R.id.blast);
-        imageView = findViewById(R.id.imageview);
-
-        btnholdPressed = false;
-        songPresent=false;
-        btnhold.setOnTouchListener(this);
-        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
-
-        accels = new float[3];
-        mags = new float[3];
-        values = new float[3];
-
-        azimuth = 0;
-        pitch = 0;
-        roll = 0;
-
-        mAccel = 10f;
-        mAccelCurrent = SensorManager.GRAVITY_EARTH;
-        mAccelLast = SensorManager.GRAVITY_EARTH;
-
-        prepareSongs();
-        updateSong();
-
-        btnplay.setOnClickListener(view -> onBtnPlayPressed());
-
-        btnnext.setOnClickListener(view -> playNext());
-
-        btnprev.setOnClickListener(view -> playPrev());
-
-        btnff.setOnClickListener(view -> {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 10000);
-            }
-        });
-
-        btnfr.setOnClickListener(view -> {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 10000);
-            }
-        });
-
-        audiosessionId = mediaPlayer.getAudioSessionId();
-
-        if (audiosessionId != -1) {
-            visualizer.setAudioSessionId(audiosessionId);
-        }
     }
 
     private void prepareSongs() {
@@ -166,41 +181,73 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
 
         mySongs = (ArrayList) bundle.getParcelableArrayList("songs");
         position = bundle.getInt("pos", 0);
-        txtsname.setSelected(true);
+        txtSongName.setSelected(true);
 
         Uri uri = Uri.parse(mySongs.get(position).toString());
-        sname = mySongs.get(position).getName();
-        txtsname.setText(sname);
+        songName = mySongs.get(position).getName();
+        songName = trimName(songName);
+        txtSongName.setText(songName);
 
         mediaPlayer = MediaPlayer.create(getApplicationContext(), uri);
         mediaPlayer.start();
+
+        updateSong();
+    }
+
+    private void playSong(String direction) {
+        mediaPlayer.stop();
+        mediaPlayer.release();
+
+        if (direction.equals("next")) {
+            position = ((position + 1) % mySongs.size());
+        } else {
+            if (direction.equals("prev")) {
+                position = ((position - 1) < 0 ? (mySongs.size() - 1) : position - 1);
+            }
+        }
+
+        Uri u = Uri.parse(mySongs.get(position).toString());
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), u);
+        songName = mySongs.get(position).getName();
+        Log.d("----------------------------------", songName);
+        songName = trimName(songName);
+        txtSongName.setText(songName);
+        mediaPlayer.start();
+
+        btnPlay.setBackgroundResource(R.drawable.ic_pause);
+        startAnimation(imageView);
+
+        int audioSessionId = mediaPlayer.getAudioSessionId();
+        if (audioSessionId != -1) {
+            visualizer.setAudioSessionId(audioSessionId);
+        }
+
+        updateSong();
     }
 
     private void updateSong() {
-        updateseekbar = new Thread(() -> {
-            if (songPresent) {
-                int totalDuration = mediaPlayer.getDuration();
-                int currentPosition = 0;
+        Runnable updateSeekbar = new Thread(() -> {
+            int totalDuration = mediaPlayer.getDuration();
+            int currentPosition = 0;
 
-                while (currentPosition < totalDuration) {
-                    try {
-                        Thread.sleep(500);
-                        currentPosition = mediaPlayer.getCurrentPosition();
-                        seekmusic.setProgress(currentPosition);
-                    } catch (InterruptedException | IllegalStateException e) {
-                        //  e.printStackTrace();
-                    }
+            while (currentPosition < totalDuration) {
+                try {
+                    Thread.sleep(500);
+                    currentPosition = mediaPlayer.getCurrentPosition();
+                    seekBar.setProgress(currentPosition);
+                } catch (InterruptedException | IllegalStateException e) {
+                    // e.printStackTrace();
                 }
             }
         });
 
-        seekmusic.setMax(mediaPlayer.getDuration());
-        updateseekbar.start();
+        seekBar.setMax(mediaPlayer.getDuration());
+        executor.execute(updateSeekbar);
 
-        seekmusic.getProgressDrawable().setColorFilter(getResources().getColor(R.color.purple_700), PorterDuff.Mode.MULTIPLY);
-        seekmusic.getThumb().setColorFilter(getResources().getColor(R.color.purple_700), PorterDuff.Mode.SRC_IN);
+        seekBar.getProgressDrawable().setColorFilter(ContextCompat.getColor(this, R.color.purple_700), PorterDuff.Mode.MULTIPLY);
+        seekBar.getThumb().setColorFilter(ContextCompat.getColor(this, R.color.purple_700), PorterDuff.Mode.SRC_IN);
 
-        seekmusic.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
             }
@@ -216,21 +263,21 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
         });
 
         String endTime = createTime(mediaPlayer.getDuration());
-        txtsstop.setText(endTime);
+        txtSongStop.setText(endTime);
 
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         final int delay = 1000;
 
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 String currentTime = createTime(mediaPlayer.getCurrentPosition());
-                txtsstart.setText(currentTime);
+                txtSongStart.setText(currentTime);
                 handler.postDelayed(this, delay);
             }
         }, delay);
 
-        mediaPlayer.setOnCompletionListener(mediaPlayer -> btnnext.performClick());
+        mediaPlayer.setOnCompletionListener(mediaPlayer -> playSong("next"));
     }
 
     @Override
@@ -239,56 +286,68 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        switch (sensorEvent.sensor.getType()) {
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                mags = sensorEvent.values.clone();
-                break;
-            case Sensor.TYPE_ACCELEROMETER:
-                accels = sensorEvent.values.clone();
+        if (btnHoldPressed) {
+            switch (sensorEvent.sensor.getType()) {
+                case Sensor.TYPE_MAGNETIC_FIELD:
+                    mags = sensorEvent.values.clone();
+                    break;
 
-                songPresent=false;
-                onShakeAction(sensorEvent);
-                songPresent=true;
-                break;
-        }
-
-        if (mags != null && accels != null) {
-            gravity = new float[9];
-            magnetic = new float[9];
-
-            SensorManager.getRotationMatrix(gravity, magnetic, accels, mags);
-            float[] outGravity = new float[9];
-            SensorManager.remapCoordinateSystem(gravity, SensorManager.AXIS_X, SensorManager.AXIS_Z, outGravity);
-            SensorManager.getOrientation(outGravity, values);
-
-            azimuth = values[0] * 57.2957795f;
-            pitch = values[1] * 57.2957795f;
-            roll = -1 * values[2] * 57.2957795f;
-            mags = null;
-            accels = null;
-        }
-
-        if (roll > 60) {
-            changeVolumeWithDisablingAndEnablingSensors("up");
-        } else {
-            if (roll < -60) {
-                changeVolumeWithDisablingAndEnablingSensors("down");
+                case Sensor.TYPE_ACCELEROMETER:
+                    accels = sensorEvent.values.clone();
+                    break;
             }
+
+            if (mags != null && accels != null) {
+                float[] gravity = new float[9];
+                float[] magnetic = new float[9];
+
+                SensorManager.getRotationMatrix(gravity, magnetic, accels, mags);
+                float[] outGravity = new float[9];
+                SensorManager.remapCoordinateSystem(gravity, SensorManager.AXIS_X, SensorManager.AXIS_Z, outGravity);
+                SensorManager.getOrientation(outGravity, values);
+
+                roll = -1 * values[2] * 57.2957795f;
+                mags = null;
+                accels = null;
+            }
+
+            if (roll > 50) {
+                changeVolume("up");
+            } else {
+                if (roll < -50) {
+                    changeVolume("down");
+                }
+            }
+
+            roll = 0;
         }
     }
 
-    private void changeVolumeWithDisablingAndEnablingSensors(String direction) {
-        sensorManager.unregisterListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
-        sensorManager.unregisterListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD));
+    @Override
+    public boolean onTouch(View view, MotionEvent motionEvent) {
+        if (!btnHoldPressed) {
+            sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+            sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
+        }
+        btnHoldPressed = true;
 
-        if (btnholdPressed) {
-            changeVolume(direction);
+        if (motionEvent.getActionMasked() == motionEvent.ACTION_UP) {
+            sensorManager.unregisterListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
+            sensorManager.unregisterListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD));
+            btnHoldPressed = false;
         }
 
-        roll = 0;
+        return false;
+    }
 
-        sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(PlayerActivity.this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
+    private void changeVolume(String direction) {
+        if (direction.equals("up")) {
+            audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+        } else {
+            if (direction.equals("down")) {
+                audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+            }
+        }
     }
 
     public void startAnimation(View view) {
@@ -315,88 +374,14 @@ public class PlayerActivity extends AppCompatActivity implements SensorEventList
         return time;
     }
 
-    private void playNext() {
-        playSong("next");
-    }
-
-    private void playPrev() {
-        playSong("prev");
-    }
-
-    private void playSong(String direction) {
-        mediaPlayer.stop();
-        mediaPlayer.release();
-
-        if (direction.equals("next")) {
-            position = ((position + 1) % mySongs.size());
-        } else {
-            if (direction.equals("prev")) {
-                position = ((position - 1) < 0 ? (mySongs.size() - 1) : position - 1);
-            }
-        }
-
-        Uri u = Uri.parse(mySongs.get(position).toString());
-        mediaPlayer = MediaPlayer.create(getApplicationContext(), u);
-        sname = mySongs.get(position).getName();
-        txtsname.setText(sname);
-        mediaPlayer.start();
-
-        btnplay.setBackgroundResource(R.drawable.ic_pause);
-        startAnimation(imageView);
-
-        int audiosessionId = mediaPlayer.getAudioSessionId();
-        if (audiosessionId != -1) {
-            visualizer.setAudioSessionId(audiosessionId);
-        }
-
-        updateSong();
-    }
-
-    private void onBtnPlayPressed() {
-        if (mediaPlayer.isPlaying()) {
-            btnplay.setBackgroundResource(R.drawable.ic_play);
-            mediaPlayer.pause();
-        } else {
-            btnplay.setBackgroundResource(R.drawable.ic_pause);
-            mediaPlayer.start();
-        }
-    }
-
-    private void onShakeAction(SensorEvent sensorEvent) {
-        float x = sensorEvent.values[0];
-        float y = sensorEvent.values[1];
-        float z = sensorEvent.values[2];
-
-        mAccelLast = mAccelCurrent;
-        mAccelCurrent = (float) Math.sqrt((double) (x * x + y * y + z * z));
-
-        float delta = mAccelCurrent - mAccelLast;
-        mAccel = mAccel * 0.9f + delta;
-
-        if (mAccel > 40) {
-            playNext();
-        }
+    private String trimName(String songName) {
+        return songName
+                .replace(".mp3", "")
+                .replace(".wav", "");
     }
 
     @Override
-    public boolean onTouch(View view, MotionEvent motionEvent) {
-        btnholdPressed = true;
-
-        if (motionEvent.getActionMasked() == motionEvent.ACTION_UP) {
-            btnholdPressed = false;
-        }
-        return false;
+    public void hearShake() {
+        playSong("next");
     }
-
-    private void changeVolume(String direction) {
-        if (direction.equals("up")) {
-
-            audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
-        } else {
-            if (direction.equals("down")) {
-                audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
-            }
-        }
-    }
-
 }

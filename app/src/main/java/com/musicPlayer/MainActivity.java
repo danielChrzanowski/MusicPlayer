@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -84,14 +83,11 @@ public class MainActivity extends AppCompatActivity {
         CustomAdapter customAdapter = new CustomAdapter();
         listView.setAdapter(customAdapter);
 
-        listView.setOnItemClickListener((adapterView, view, i, l) -> {
-            String songName = (String) listView.getItemAtPosition(i);
-
-            startActivity(new Intent(getApplicationContext(), PlayerActivity.class)
-                    .putExtra("songs", mySongs)
-                    .putExtra("songname", songName)
-                    .putExtra("pos", i));
-        });
+        listView.setOnItemClickListener((adapterView, view, i, l) ->
+                startActivity(new Intent(this, PlayerActivity.class)
+                        .putExtra("songs", mySongs)
+                        .putExtra("pos", i)
+                ));
     }
 
     class CustomAdapter extends BaseAdapter {
@@ -119,9 +115,9 @@ public class MainActivity extends AppCompatActivity {
         public View getView(int i, View view, ViewGroup viewGroup) {
             View myView = getLayoutInflater().inflate(R.layout.list_item, null);
 
-            TextView textsong = myView.findViewById(R.id.txtsongname);
-            textsong.setSelected(true);
-            textsong.setText(items[i]);
+            TextView txtSong = myView.findViewById(R.id.txtSongName);
+            txtSong.setSelected(true);
+            txtSong.setText(items[i]);
 
             return myView;
         }

@@ -16,7 +16,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/txtsn"
+            android:id="@+id/txtSongName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="20dp"
@@ -31,18 +31,18 @@
             android:textStyle="italic" />
 
         <ImageView
-            android:id="@+id/imageview"
+            android:id="@+id/imageView"
             android:layout_width="250dp"
             android:layout_height="250dp"
             android:layout_marginBottom="8dp"
-            android:src="@drawable/musicnote" />
+            android:src="@drawable/music_note" />
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="60dp">
 
             <SeekBar
-                android:id="@+id/seekbar"
+                android:id="@+id/seekBar"
                 android:layout_width="250dp"
                 android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
@@ -53,25 +53,25 @@
                 android:layout_marginBottom="20dp" />
 
             <TextView
-                android:id="@+id/txtsstart"
+                android:id="@+id/txtSongStart"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="false"
                 android:layout_centerInParent="true"
                 android:layout_marginStart="20dp"
-                android:layout_toStartOf="@+id/seekbar"
+                android:layout_toStartOf="@+id/seekBar"
                 android:text="@string/_0_10"
                 android:textColor="#fff"
                 android:textSize="14sp" />
 
             <TextView
-                android:id="@+id/txtsstop"
+                android:id="@+id/txtSongStop"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="false"
                 android:layout_centerInParent="true"
                 android:layout_marginEnd="20dp"
-                android:layout_toEndOf="@+id/seekbar"
+                android:layout_toEndOf="@+id/seekBar"
                 android:text="@string/_4_10"
                 android:textColor="#fff"
                 android:textSize="14sp" />
@@ -88,7 +88,7 @@
             android:layout_height="match_parent">
 
             <ImageButton
-                android:id="@+id/playbtn"
+                android:id="@+id/btnPlay"
                 android:layout_width="70dp"
                 android:layout_height="70dp"
                 android:layout_centerHorizontal="true"
@@ -96,50 +96,50 @@
                 tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
 
             <ImageButton
-                android:id="@+id/btnnext"
+                android:id="@+id/btnNext"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginTop="15dp"
-                android:layout_toEndOf="@+id/playbtn"
+                android:layout_toEndOf="@+id/btnPlay"
                 android:background="@drawable/ic_next"
                 tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
 
             <ImageButton
-                android:id="@+id/btnprev"
+                android:id="@+id/btnPrev"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginTop="15dp"
-                android:layout_toStartOf="@+id/playbtn"
+                android:layout_toStartOf="@+id/btnPlay"
                 android:background="@drawable/ic_prev"
                 tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
 
             <ImageButton
-                android:id="@+id/btnff"
+                android:id="@+id/btnFF"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="15dp"
                 android:layout_marginTop="20dp"
-                android:layout_toEndOf="@id/btnnext"
+                android:layout_toEndOf="@id/btnNext"
                 android:background="@drawable/ic_fast_forward"
                 tools:ignore="TouchTargetSizeCheck,ImageContrastCheck,SpeakableTextPresentCheck" />
 
             <ImageButton
-                android:id="@+id/btnfr"
+                android:id="@+id/btnFR"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginTop="20dp"
                 android:layout_marginEnd="15dp"
-                android:layout_toStartOf="@id/btnprev"
+                android:layout_toStartOf="@id/btnPrev"
                 android:background="@drawable/ic_fast_rewind"
                 tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck,ImageContrastCheck" />
 
             <ImageButton
-                android:id="@+id/btnhold"
+                android:id="@+id/btnHold"
                 android:layout_width="70dp"
                 android:layout_height="70dp"
                 android:layout_marginTop="75dp"
                 android:layout_marginEnd="0dp"
-                android:layout_toEndOf="@id/btnprev"
+                android:layout_toEndOf="@id/btnPrev"
                 android:background="@drawable/ic_volume"
                 tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
 
